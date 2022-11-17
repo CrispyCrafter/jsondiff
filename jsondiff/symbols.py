@@ -5,11 +5,13 @@ class Symbol(object):
         self.label = label
 
     def pack(self):
-        return struct.pack("s", self.label)
+        s = bytes(self.label, 'utf-8')
+        return struct.pack("I%ds" % (len(s),), len(s), s)
     
     @staticmethod
     def unpack(data):
-        return Symbol(*struct.unpack("s", data))
+        (i,), data = struct.unpack("I", data[:4]), data[4:]
+        return Symbol(data[:i].decode("utf-8") )
 
     def __repr__(self):
         return self.label

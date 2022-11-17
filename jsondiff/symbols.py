@@ -1,7 +1,15 @@
+import struct 
 
 class Symbol(object):
     def __init__(self, label):
         self.label = label
+
+    def pack(self):
+        return struct.pack("s", self.label)
+    
+    @staticmethod
+    def unpack(data):
+        return Symbol(*struct.unpack("s", data))
 
     def __repr__(self):
         return self.label

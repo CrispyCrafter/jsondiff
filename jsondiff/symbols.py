@@ -9,6 +9,15 @@ class Symbol(object):
     def unpack(data):
         return Symbol(data.decode("utf-8") )
 
+    def __eq__(self, other):
+        if isinstance(other, Symbol):
+            return self.label == other.label
+        else:
+            return False
+    
+    def __hash__(self):
+        return hash(self.label)
+
     def __repr__(self):
         return self.label
 

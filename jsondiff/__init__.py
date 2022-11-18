@@ -1,24 +1,9 @@
-__version__ = '2.0.0'
+__version__ = '3.0.0'
 
-import sys
 import json
 
 from .symbols import *
 from .symbols import Symbol
-
-# rules
-# - keys and strings which start with $ (or specified escape_str) are escaped to $$ (or escape_str * 2)
-# - when source is dict and diff is a dict -> patch
-# - when source is list and diff is a list patch dict -> patch
-# - else -> replacement
-
-# Python 2 vs 3
-PY3 = sys.version_info[0] == 3
-
-if PY3:
-    string_types = str
-else:
-    string_types = basestring
 
 
 class JsonDumper(object):
@@ -40,7 +25,7 @@ class JsonLoader(object):
         self.kwargs = kwargs
 
     def __call__(self, src):
-        if isinstance(src, string_types):
+        if isinstance(src, str):
             return json.loads(src, **self.kwargs)
         else:
             return json.load(src, **self.kwargs)
@@ -48,25 +33,6 @@ class JsonLoader(object):
 
 default_loader = JsonLoader()
 
-
-class JsonDiffSyntax(object):
-    def emit_set_diff(self, a, b, s, added, removed):
-        raise NotImplementedError()
-
-    def emit_list_diff(self, a, b, s, inserted, changed, deleted):
-        raise NotImplementedError()
-
-    def emit_dict_diff(self, a, b, s, added, changed, removed):
-        raise NotImplementedError()
-
-    def emit_value_diff(self, a, b, s):
-        raise NotImplementedError()
-
-    def patch(self, a, d):
-        raise NotImplementedError()
-
-    def unpatch(self, a, d):
-        raise NotImplementedError()
 
 
 class CompactJsonDiffSyntax(object):
@@ -120,12 +86,12 @@ class CompactJsonDiffSyntax(object):
             if isinstance(a, dict):
                 a = dict(a)
                 for k, v in d.items():
-                    if k is delete:
+                    if k == delete:
                         for kdel in v:
                             del a[kdel]
                     else:
                         av = a.get(k, missing)
-                        if av is missing:
+                        if av == missing:
                             a[k] = v
                         else:
                             a[k] = self.patch(av, v)
@@ -140,7 +106,7 @@ class CompactJsonDiffSyntax(object):
                     for pos, value in d[insert]:
                         a.insert(pos, value)
                 for k, v in d.items():
-                    if k is not delete and k is not insert:
+                    if k != delete and k != insert:
                         k = int(k)
                         a[k] = self.patch(a[k], v)
                 if original_type is not list:
@@ -158,196 +124,9 @@ class CompactJsonDiffSyntax(object):
         return d
 
 
-class ExplicitJsonDiffSyntax(object):
-    def emit_set_diff(self, a, b, s, added, removed):
-        if s == 0.0 or len(removed) == len(a):
-            return b
-        else:
-            d = {}
-            if removed:
-                d[discard] = removed
-            if added:
-                d[add] = added
-            return d
-
-    def emit_list_diff(self, a, b, s, inserted, changed, deleted):
-        if s == 0.0:
-            return b
-        elif s == 1.0:
-            return {}
-        else:
-            d = changed
-            if inserted:
-                d[insert] = inserted
-            if deleted:
-                d[delete] = [pos for pos, value in deleted]
-            return d
-
-    def emit_dict_diff(self, a, b, s, added, changed, removed):
-        if s == 0.0:
-            return b
-        elif s == 1.0:
-            return {}
-        else:
-            d = {}
-            if added:
-                d[insert] = added
-            if changed:
-                d[update] = changed
-            if removed:
-                d[delete] = list(removed.keys())
-            return d
-
-    def emit_value_diff(self, a, b, s):
-        if s == 1.0:
-            return {}
-        else:
-            return b
-
-
-class SymmetricJsonDiffSyntax(object):
-    def emit_set_diff(self, a, b, s, added, removed):
-        if s == 0.0 or len(removed) == len(a):
-            return [a, b]
-        else:
-            d = {}
-            if added:
-                d[add] = added
-            if removed:
-                d[discard] = removed
-            return d
-
-    def emit_list_diff(self, a, b, s, inserted, changed, deleted):
-        if s == 0.0:
-            return [a, b]
-        elif s == 1.0:
-            return {}
-        else:
-            d = changed
-            if inserted:
-                d[insert] = inserted
-            if deleted:
-                d[delete] = deleted
-            return d
-
-    def emit_dict_diff(self, a, b, s, added, changed, removed):
-        if s == 0.0:
-            return [a, b]
-        elif s == 1.0:
-            return {}
-        else:
-            d = changed
-            if added:
-                d[insert] = added
-            if removed:
-                d[delete] = removed
-            return d
-
-    def emit_value_diff(self, a, b, s):
-        if s == 1.0:
-            return {}
-        else:
-            return [a, b]
-
-    def patch(self, a, d):
-        if isinstance(d, list):
-            _, b = d
-            return b
-        elif isinstance(d, dict):
-            if not d:
-                return a
-            if isinstance(a, dict):
-                a = dict(a)
-                for k, v in d.items():
-                    if k is delete:
-                        for kdel, _ in v.items():
-                            del a[kdel]
-                    elif k is insert:
-                        for kk, vv in v.items():
-                            a[kk] = vv
-                    else:
-                        a[k] = self.patch(a[k], v)
-                return a
-            elif isinstance(a, (list, tuple)):
-                original_type = type(a)
-                a = list(a)
-                if delete in d:
-                    for pos, value in d[delete]:
-                        a.pop(pos)
-                if insert in d:
-                    for pos, value in d[insert]:
-                        a.insert(pos, value)
-                for k, v in d.items():
-                    if k is not delete and k is not insert:
-                        k = int(k)
-                        a[k] = self.patch(a[k], v)
-                if original_type is not list:
-                    a = original_type(a)
-                return a
-            elif isinstance(a, set):
-                a = set(a)
-                if discard in d:
-                    for x in d[discard]:
-                        a.discard(x)
-                if add in d:
-                    for x in d[add]:
-                        a.add(x)
-                return a
-        raise Exception("Invalid symmetric diff")
-
-    def unpatch(self, b, d):
-        if isinstance(d, list):
-            a, _ = d
-            return a
-        elif isinstance(d, dict):
-            if not d:
-                return b
-            if isinstance(b, dict):
-                b = dict(b)
-                for k, v in d.items():
-                    if k is delete:
-                        for kk, vv in v.items():
-                            b[kk] = vv
-                    elif k is insert:
-                        for kk, vv in v.items():
-                            del b[kk]
-                    else:
-                        b[k] = self.unpatch(b[k], v)
-                return b
-            elif isinstance(b, (list, tuple)):
-                original_type = type(b)
-                b = list(b)
-                for k, v in d.items():
-                    if k is not delete and k is not insert:
-                        k = int(k)
-                        b[k] = self.unpatch(b[k], v)
-                if insert in d:
-                    for pos, value in reversed(d[insert]):
-                        b.pop(pos)
-                if delete in d:
-                    for pos, value in reversed(d[delete]):
-                        b.insert(pos, value)
-                if original_type is not list:
-                    b = original_type(b)
-                return b
-            elif isinstance(b, set):
-                b = set(b)
-                if discard in d:
-                    for x in d[discard]:
-                        b.add(x)
-                if add in d:
-                    for x in d[add]:
-                        b.discard(x)
-                return b
-        raise Exception("Invalid symmetric diff")
-
-
 builtin_syntaxes = {
-    'compact': CompactJsonDiffSyntax(),
-    'symmetric': SymmetricJsonDiffSyntax(),
-    'explicit': ExplicitJsonDiffSyntax()
+    'compact': CompactJsonDiffSyntax()
 }
-
 
 class JsonDiffer(object):
 
@@ -390,19 +169,12 @@ class JsonDiffer(object):
             return reversed(r)
 
     def _list_diff(self, X, Y):
-        # LCS
         m = len(X)
         n = len(Y)
-        # An (m+1) times (n+1) matrix
         C = [[0 for j in range(n+1)] for i in range(m+1)]
         for i in range(1, m+1):
             for j in range(1, n+1):
                 _, s = self._obj_diff(X[i-1], Y[j-1])
-                # Following lines are part of the original LCS algorithm
-                # left in the code in case modification turns out to be problematic
-                #if X[i-1] == Y[j-1]:
-                #    C[i][j] = C[i-1][j-1] + 1
-                #else:
                 C[i][j] = max(C[i][j-1], C[i-1][j], C[i-1][j-1] + s)
         inserted = []
         deleted = []
@@ -464,9 +236,10 @@ class JsonDiffer(object):
         changed = {}
         for k, v in a.items():
             w = b.get(k, missing)
-            if w is missing:
-                nremoved += 1
-                removed[k] = v
+            if isinstance(w, Symbol):
+                if w == missing:
+                    nremoved += 1
+                    removed[k] = v
             else:
                 nmatched += 1
                 d, s = self._obj_diff(v, w)
@@ -553,7 +326,7 @@ class JsonDiffer(object):
 
 
     def _unescape(self, x):
-        if isinstance(x, string_types):
+        if isinstance(x, str):
             sym = self._symbol_map.get(x, None)
             if sym is not None:
                 return sym
@@ -578,7 +351,7 @@ class JsonDiffer(object):
     def _escape(self, o):
         if type(o) is Symbol:
             return self.options.escape_str + o.label
-        if isinstance(o, string_types) and o.startswith(self.options.escape_str):
+        if isinstance(o, str) and o.startswith(self.options.escape_str):
             return self.options.escape_str + o
         return o
 

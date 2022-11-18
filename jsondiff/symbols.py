@@ -1,17 +1,13 @@
-import struct 
-
 class Symbol(object):
     def __init__(self, label):
         self.label = label
 
     def pack(self):
-        s = bytes(self.label, 'utf-8')
-        return struct.pack("I%ds" % (len(s),), len(s), s)
+        return bytes(self.label, 'utf-8')
     
     @staticmethod
     def unpack(data):
-        (i,), data = struct.unpack("I", data[:4]), data[4:]
-        return Symbol(data[:i].decode("utf-8") )
+        return Symbol(data.decode("utf-8") )
 
     def __repr__(self):
         return self.label

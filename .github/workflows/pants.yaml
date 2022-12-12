@@ -1,0 +1,30 @@
+name: Pants
+
+on: [pull_request]
+jobs:
+  build:
+    name: Perform CI Checks
+    runs-on: ubuntu-20.04
+    strategy:
+      matrix:
+        python-version: [3.8.15]
+    steps:
+    - uses: actions/checkout@v3
+    - uses: pantsbuild/actions/init-pants@v2
+      # This action bootstraps pants and manages 2-3 GHA caches.
+      # See: github.com/pantsbuild/actions/tree/main/init-pants/
+      with:
+        pants-python-version: ${{ matrix.python-version }}
+        gha-cache-key: cache0-py${{ matrix.python-version }}
+        named-caches-hash: ${{ hashFiles('python-default.lock') }}
+        cache-lmdb-store: 'true'  # defaults to 'false'
+    - name: Check BUILD files
+      run: | 
+        ./pants tailor --check update-build-files --check ::
+    - name: Lint and typecheck
+      run: | 
+        ./pants lint check ::
+    - name: Test
+      run: |
+        ./pants test ::
+      if: always()

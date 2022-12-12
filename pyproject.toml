@@ -1,0 +1,26 @@
+[tool.poetry]
+name = "ujsondiff"
+version = "3.0.0"
+description = "Diff JSON and JSON-like structures in Python"
+authors = ["BP Greyling <bpgreyling@gmail.com>"]
+license = "MIT"
+readme = "README.rst"
+homepage = "https://github.com/CrispyCrafter/ujsondiff"
+repository = "https://github.com/CrispyCrafter/ujsondiff"
+keywords=['json', 'diff', 'diffing', 'difference', 'patch', 'delta', 'dict', 'LCS', 'micropython']
+classifiers = [
+    "Development Status :: 1 - Planning",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: Implementation :: MicroPython",
+    'Programming Language :: Python :: 3',
+    "Topic :: Software Development :: Libraries :: Python Modules",
+]
+
+[tool.poetry.dependencies]
+python = "^3.8"
+hypothesis = "^6.60.0"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

@@ -10,7 +10,7 @@ def do(cmd, comment=None):
     print()
 
 
-do("from jsondiff import diff")
+do("from ujsondiff import diff")
 
 do("diff({'a': 1, 'b': 2}, {'b': 3, 'c': 4})")
 

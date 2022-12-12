@@ -1,4 +1,4 @@
-jsondiff
+ujsondiff
 ========
 
 Diff JSON and JSON-like structures in Python.
@@ -6,15 +6,15 @@ Diff JSON and JSON-like structures in Python.
 Installation
 ------------
 
-``pip install jsondiff``
+``pip install ujsondiff``
 
 Quickstart
 ----------
 
 .. code-block:: python
 
-    >>> import jsondiff as jd
-    >>> from jsondiff import diff
+    >>> import ujsondiff as jd
+    >>> from ujsondiff import diff
 
     >>> diff({'a': 1, 'b': 2}, {'b': 3, 'c': 4})
     {'c': 4, 'b': 3, delete: ['a']}

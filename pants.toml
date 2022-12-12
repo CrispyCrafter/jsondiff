@@ -18,6 +18,3 @@ args = ["--profile black"]
 
 [pyupgrade]
 args = ["--py39-plus"]
-
-[autoflake]
-args = ["--exclude tests/test_migrations.py"]

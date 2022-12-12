@@ -1,12 +1,20 @@
-__version__ = '3.0.0'
+__version__ = "3.0.0"
 
 import json
 
-from .symbols import *
-from .symbols import Symbol
+from ujsondiff.symbols import (
+    Symbol,
+    _all_symbols_,
+    add,
+    delete,
+    discard,
+    insert,
+    missing,
+    replace,
+)
 
 
-class JsonDumper(object):
+class JsonDumper:
     def __init__(self, **kwargs):
         self.kwargs = kwargs
 
@@ -20,7 +28,7 @@ class JsonDumper(object):
 default_dumper = JsonDumper()
 
 
-class JsonLoader(object):
+class JsonLoader:
     def __init__(self, **kwargs):
         self.kwargs = kwargs
 
@@ -34,8 +42,7 @@ class JsonLoader(object):
 default_loader = JsonLoader()
 
 
-
-class CompactJsonDiffSyntax(object):
+class CompactJsonDiffSyntax:
     def emit_set_diff(self, a, b, s, added, removed):
         if s == 0.0 or len(removed) == len(a):
             return {replace: b} if isinstance(b, dict) else b
@@ -124,17 +131,23 @@ class CompactJsonDiffSyntax(object):
         return d
 
 
-builtin_syntaxes = {
-    'compact': CompactJsonDiffSyntax()
-}
+builtin_syntaxes = {"compact": CompactJsonDiffSyntax()}
 
-class JsonDiffer(object):
 
-    class Options(object):
+class JsonDiffer:
+    class Options:
         pass
 
-    def __init__(self, syntax='compact', load=False, dump=False, marshal=False,
-                 loader=default_loader, dumper=default_dumper, escape_str='$'):
+    def __init__(
+        self,
+        syntax="compact",
+        load=False,
+        dump=False,
+        marshal=False,
+        loader=default_loader,
+        dumper=default_dumper,
+        escape_str="$",
+    ):
         self.options = JsonDiffer.Options()
         self.options.syntax = builtin_syntaxes.get(syntax, syntax)
         self.options.load = load
@@ -144,8 +157,7 @@ class JsonDiffer(object):
         self.options.dumper = dumper
         self.options.escape_str = escape_str
         self._symbol_map = {
-            escape_str + symbol.label: symbol
-            for symbol in _all_symbols_
+            escape_str + symbol.label: symbol for symbol in _all_symbols_
         }
 
     def _list_diff_0(self, C, X, Y):
@@ -153,17 +165,17 @@ class JsonDiffer(object):
         r = []
         while True:
             if i > 0 and j > 0:
-                d, s = self._obj_diff(X[i-1], Y[j-1])
-                if s > 0 and C[i][j] == C[i-1][j-1] + s:
-                    r.append((0, d, j-1, s))
+                d, s = self._obj_diff(X[i - 1], Y[j - 1])
+                if s > 0 and C[i][j] == C[i - 1][j - 1] + s:
+                    r.append((0, d, j - 1, s))
                     i, j = i - 1, j - 1
                     continue
-            if j > 0 and (i == 0 or C[i][j-1] >= C[i-1][j]):
-                r.append((1, Y[j-1], j-1, 0.0))
+            if j > 0 and (i == 0 or C[i][j - 1] >= C[i - 1][j]):
+                r.append((1, Y[j - 1], j - 1, 0.0))
                 j = j - 1
                 continue
-            if i > 0 and (j == 0 or C[i][j-1] < C[i-1][j]):
-                r.append((-1, X[i-1], i-1, 0.0))
+            if i > 0 and (j == 0 or C[i][j - 1] < C[i - 1][j]):
+                r.append((-1, X[i - 1], i - 1, 0.0))
                 i = i - 1
                 continue
             return reversed(r)
@@ -171,11 +183,11 @@ class JsonDiffer(object):
     def _list_diff(self, X, Y):
         m = len(X)
         n = len(Y)
-        C = [[0 for j in range(n+1)] for i in range(m+1)]
-        for i in range(1, m+1):
-            for j in range(1, n+1):
-                _, s = self._obj_diff(X[i-1], Y[j-1])
-                C[i][j] = max(C[i][j-1], C[i-1][j], C[i-1][j-1] + s)
+        C = [[0 for j in range(n + 1)] for i in range(m + 1)]
+        for i in range(1, m + 1):
+            for j in range(1, n + 1):
+                _, s = self._obj_diff(X[i - 1], Y[j - 1])
+                C[i][j] = max(C[i][j - 1], C[i - 1][j], C[i - 1][j - 1] + s)
         inserted = []
         deleted = []
         changed = {}
@@ -194,7 +206,10 @@ class JsonDiffer(object):
             s = 1.0
         else:
             s = tot_s / tot_n
-        return self.options.syntax.emit_list_diff(X, Y, s, inserted, changed, deleted), s
+        return (
+            self.options.syntax.emit_list_diff(X, Y, s, inserted, changed, deleted),
+            s,
+        )
 
     def _set_diff(self, a, b):
         removed = a.difference(b)
@@ -202,13 +217,9 @@ class JsonDiffer(object):
         if not removed and not added:
             return {}, 1.0
         ranking = sorted(
-            (
-                (self._obj_diff(x, y)[1], x, y)
-                for x in removed
-                for y in added
-            ),
+            ((self._obj_diff(x, y)[1], x, y) for x in removed for y in added),
             reverse=True,
-            key=lambda x: x[0]
+            key=lambda x: x[0],
         )
         r2 = set(removed)
         a2 = set(added)
@@ -324,7 +335,6 @@ class JsonDiffer(object):
         else:
             return a
 
-
     def _unescape(self, x):
         if isinstance(x, str):
             sym = self._symbol_map.get(x, None)
@@ -336,15 +346,9 @@ class JsonDiffer(object):
 
     def unmarshal(self, d):
         if isinstance(d, dict):
-            return {
-                self._unescape(k): self.unmarshal(v)
-                for k, v in d.items()
-            }
+            return {self._unescape(k): self.unmarshal(v) for k, v in d.items()}
         elif isinstance(d, (list, tuple)):
-            return type(d)(
-                self.unmarshal(x)
-                for x in d
-            )
+            return type(d)(self.unmarshal(x) for x in d)
         else:
             return self._unescape(d)
 
@@ -357,15 +361,9 @@ class JsonDiffer(object):
 
     def marshal(self, d):
         if isinstance(d, dict):
-            return {
-                self._escape(k): self.marshal(v)
-                for k, v in d.items()
-            }
+            return {self._escape(k): self.marshal(v) for k, v in d.items()}
         elif isinstance(d, (list, tuple)):
-            return type(d)(
-                self.marshal(x)
-                for x in d
-            )
+            return type(d)(self.marshal(x) for x in d)
         else:
             return self._escape(d)
 

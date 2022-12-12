@@ -1,0 +1,23 @@
+[GLOBAL]
+pants_version = "2.14.0"
+
+backend_packages = [
+  "pants.backend.python",
+  "pants.backend.python.lint.black",
+  "pants.backend.python.lint.flake8",
+  "pants.backend.experimental.python.lint.pyupgrade",
+  "pants.backend.experimental.python.lint.autoflake",
+  "pants.backend.python.lint.isort"
+]
+
+[anonymous-telemetry]
+enabled = false
+
+[isort]
+args = ["--profile black"]
+
+[pyupgrade]
+args = ["--py39-plus"]
+
+[autoflake]
+args = ["--exclude tests/test_migrations.py"]
